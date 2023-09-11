@@ -1,0 +1,1 @@
+select doc_external_id from acc_entry ae;

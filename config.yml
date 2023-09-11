@@ -1,0 +1,7 @@
+mode: "difference"  #"difference" / "intersection"
+#important for difference mode, working as "master set MINUS slave set"
+mastertype: "pg" #"oracle" / "pg" #first DB !!!
+slavetype: "pg" #"oracle" / "pg"
+masterdsn: "postgresql://otr_usr:usr_otr1@194.226.51.25:6005/fah_datamart" #first DB
+slavedsn: "postgresql://otr_usr:usr_otr1@194.226.51.25:6005/fah_datamart" ##second DB
+attrs: "master" # "slave"/"master"/"none"
