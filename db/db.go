@@ -4,38 +4,36 @@ import (
 	"Compare2/config"
 	"context"
 	"database/sql"
-	_ "github.com/godror/godror"
-	//_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/sijms/go-ora/v2"
 	"go.uber.org/zap"
-	"time"
 )
 
-func InitConn(Log *zap.Logger, ms string, cfg config.Config) (connect *sql.DB, err error) {
+func InitConnOra(Log *zap.Logger, cfg config.Config) (connect *sql.DB, err error) {
 	var db *sql.DB
-	switch {
-	case ms == "master" && cfg.Mastertype == "oracle":
-		db, err = sql.Open("godror", cfg.Masterdsn)
-	case ms == "slave" && cfg.Mastertype == "oracle":
-		db, err = sql.Open("godror", cfg.Slavedsn)
-	case ms == "master" && cfg.Mastertype == "pg":
-		db, err = sql.Open("pgx", cfg.Masterdsn)
-	case ms == "slave" && cfg.Mastertype == "pg":
-		db, err = sql.Open("pgx", cfg.Slavedsn)
-	}
+	db, err = sql.Open("oracle", cfg.Masterdsn)
 	if err != nil {
 		Log.Error("Не удалось создать подключение к БД", zap.Error(err))
 		return nil, err
 	}
 	var ctx context.Context
 	ctx = context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
-		Log.Error("Не удалось проверить подключение к БД", zap.Error(err))
+		Log.Error("Ошибка подключения к DB", zap.String("dsn", cfg.Masterdsn), zap.Error(err))
 		return nil, err
 	} else {
-		Log.Info("Подключение к БД - OK")
+		Log.Info("Подключение к БД - OK", zap.String("dsn", cfg.Masterdsn))
 	}
 	return db, err
+}
+
+func InitConnPg(log *zap.Logger, cfg config.Config) (*pgx.Conn, error) {
+	conn, err := pgx.Connect(context.Background(), cfg.Slavedsn)
+	if err != nil {
+		log.Error("Ошибка подключения к DB", zap.String("dsn", cfg.Slavedsn), zap.Error(err))
+		return nil, err
+	}
+	log.Info("Подключение к БД - OK", zap.String("dsn", cfg.Slavedsn))
+	return conn, nil
 }

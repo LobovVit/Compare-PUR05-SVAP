@@ -5,7 +5,7 @@ import (
 	"Compare2/db"
 	"Compare2/files"
 	"Compare2/logging"
-	"database/sql"
+	"context"
 	"go.uber.org/zap"
 	"log"
 	"time"
@@ -33,7 +33,6 @@ func intersection(master, slave []string) (diff []string) {
 	for _, item := range slave {
 		m[item] = true
 	}
-	log.Println("1111=", len(m))
 
 	for _, item := range master {
 		if m[item] == true {
@@ -55,11 +54,11 @@ func main() {
 	defer logger.Sync()
 
 	//init connections
-	dbMaster, err := db.InitConn(logger, "master", *cfg)
+	dbMaster, err := db.InitConnOra(logger, *cfg)
 	if err != nil {
 		logger.Fatal("Не удалось подключиться к БД", zap.Error(err))
 	}
-	dbSlave, err := db.InitConn(logger, "slave", *cfg)
+	dbSlave, err := db.InitConnPg(logger, *cfg)
 	if err != nil {
 		logger.Fatal("Не удалось подключиться к БД", zap.Error(err))
 	}
@@ -80,7 +79,7 @@ func main() {
 	if err != nil {
 		logger.Error("Ошибка запроса к Master", zap.Error(err))
 	}
-	defer masterRows.Close()
+	//defer masterRows.Close()
 	var masterGuids []string
 	for masterRows.Next() {
 		var guid string
@@ -90,11 +89,16 @@ func main() {
 	logger.Info("masterGuids=", zap.Int("cnt", len(masterGuids)))
 
 	//get slave data
-	slaveRows, err := dbSlave.Query(slaveSQL, masterGuids)
+	err = dbSlave.Ping(context.Background())
+	if err != nil {
+		logger.Error("Ошибка Ping к Slave", zap.Error(err))
+	}
+	logger.Info("Ping к Slave - OK")
+	slaveRows, err := dbSlave.Query(context.Background(), slaveSQL, masterGuids)
 	if err != nil {
 		logger.Error("Ошибка запроса к Slave", zap.Error(err))
 	}
-	defer slaveRows.Close()
+	//defer slaveRows.Close()
 	var slaveGuids []string
 	for slaveRows.Next() {
 		var guid string
@@ -115,39 +119,32 @@ func main() {
 	files.WriteFile(logger, time.Now().Format("2006_Jan_2_15_04_05")+"_result_guids_"+cfg.Мode+".txt", result)
 
 	//read SQL files attrs
-	attrsSQL, err := files.ReadFile(logger, "Attrs.sql")
-	if err != nil {
-		logger.Error("Ошибка ReadFile Attrs.sql", zap.Error(err))
-	}
+	//attrsSQL, err := files.ReadFile(logger, "Attrs.sql")
+	//if err != nil {
+	//	logger.Error("Ошибка ReadFile Attrs.sql", zap.Error(err))
+	//}
 	//get attrs
-	if len(attrsSQL) > 20 {
-		var attrsRows *sql.Rows
-		var err error
-		switch cfg.Attrs {
-		case "slave":
-			attrsRows, err = dbMaster.Query(attrsSQL, result)
-		case "master":
-			attrsRows, err = dbSlave.Query(attrsSQL, result)
-		default:
-			attrsRows = nil
-		}
-		if err != nil {
-			logger.Error("Ошибка запроса attrsRows", zap.Error(err))
-		}
-		var attrsGuids []string
-		if attrsRows != nil {
-			defer attrsRows.Close()
-			for attrsRows.Next() {
-				var guid, masterText string
-				err = attrsRows.Scan(&guid, &masterText)
-				if err != nil {
-					logger.Error("Ошибка Scan", zap.Error(err))
-				}
-				attrsGuids = append(attrsGuids, guid+" attrs= "+masterText)
-			}
-			logger.Info("slaveGuids=", zap.Int("=", len(attrsGuids)))
-			files.WriteFile(logger, time.Now().Format("2006_Jan_2_15_04_05")+"_result_attrs_"+cfg.Мode+".txt", attrsGuids)
-
-		}
-	}
+	//if len(attrsSQL) > 20 {
+	//	var attrsRows pgx.Rows
+	//	var err error
+	//	attrsRows, err = dbSlave.Query(context.Background(), attrsSQL, result)
+	//	if err != nil {
+	//		logger.Error("Ошибка запроса attrsRows", zap.Error(err))
+	//	}
+	//	var attrsGuids []string
+	//	if attrsRows != nil {
+	//		defer attrsRows.Close()
+	//		for attrsRows.Next() {
+	//			var guid, masterText string
+	//			err = attrsRows.Scan(&guid, &masterText)
+	//			if err != nil {
+	//				logger.Error("Ошибка Scan", zap.Error(err))
+	//			}
+	//			attrsGuids = append(attrsGuids, guid+" attrs= "+masterText)
+	//		}
+	//		logger.Info("attrsGuids=", zap.Int("=", len(attrsGuids)))
+	//		files.WriteFile(logger, time.Now().Format("2006_Jan_2_15_04_05")+"_result_attrs_"+cfg.Мode+".txt", attrsGuids)
+	//
+	//	}
+	//}
 }
