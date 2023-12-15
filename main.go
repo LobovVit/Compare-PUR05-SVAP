@@ -53,12 +53,8 @@ func main() {
 	logger := logging.InitLog()
 	defer logger.Sync()
 
-	//init connections
+	//init connection1
 	dbMaster, err := db.InitConnOra(logger, *cfg)
-	if err != nil {
-		logger.Fatal("Не удалось подключиться к БД", zap.Error(err))
-	}
-	dbSlave, err := db.InitConnPg(logger, *cfg)
 	if err != nil {
 		logger.Fatal("Не удалось подключиться к БД", zap.Error(err))
 	}
@@ -69,6 +65,7 @@ func main() {
 		logger.Error("Ошибка ReadFile", zap.Error(err))
 	}
 
+	//init connection1
 	slaveSQL, err := files.ReadFile(logger, "Slave.sql")
 	if err != nil {
 		logger.Error("Ошибка ReadFile", zap.Error(err))
@@ -88,6 +85,10 @@ func main() {
 	}
 	logger.Info("masterGuids=", zap.Int("cnt", len(masterGuids)))
 
+	dbSlave, err := db.InitConnPg(logger, *cfg)
+	if err != nil {
+		logger.Fatal("Не удалось подключиться к БД", zap.Error(err))
+	}
 	//get slave data
 	err = dbSlave.Ping(context.Background())
 	if err != nil {
