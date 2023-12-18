@@ -2,6 +2,6 @@ mode: "difference"  #"difference" / "intersection"
 #important for difference mode, working as "master set MINUS slave set"
 mastertype: "oracle" #"oracle" / "pg" #first DB !!!
 slavetype: "pg" #"oracle" / "pg"
-masterdsn: "oracle://EXP05FBN2:Oracle33@eb-exp05fb-dev-n2-poi-db.otr.ru:1531/ebpoi" #first DB
-slavedsn: "postgresql://otr_usr:usr_otr1@194.226.51.25:6005/fah_datamart" ##second DB
+masterdsn: "oracle://<login>:<pass>@<host>:<port>/<sid>" #first DB
+slavedsn: "postgresql://<login>:<pass>@<host>:<port>/<sid>" ##second DB
 attrs: "none" # "slave"/"master"/"none"
